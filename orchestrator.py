@@ -5,23 +5,24 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 pipeline_steps = [
-    ("Inicializando Schema Gold", "init_db.py"),
-    ("Executando Ingestão de Dados", "powerbi_models/ingestao_bitcoin.py")
+    ("Database Initialization", "database_init.py"),
+    ("Bitcoin Data Ingestion", "analytics_models/bitcoin_ingestion.py"),
+    ("Macroeconomic Data Ingestion", "analytics_models/macro_ingestion.py")
 ]
 
 def run_pipeline():
-    logging.info("Iniciando orquestração completa da plataforma de dados...")
+    logging.info("Starting complete data platform orchestration...")
     for step_name, script in pipeline_steps:
-        logging.info(f"[{step_name}] Executando script: {script}")
+        logging.info(f"[{step_name}] Running script: {script}")
         result = subprocess.run([sys.executable, script], capture_output=True, text=True)
         if result.returncode != 0:
-            err_msg = f"Erro em [{step_name}] ({script}):\n{result.stderr}"
+            err_msg = f"Error in [{step_name}] ({script}):\n{result.stderr}"
             logging.error(err_msg)
             sys.exit(1)
         else:
-            out_msg = f"Sucesso em [{step_name}]:\n{result.stdout}"
+            out_msg = f"Success in [{step_name}]:\n{result.stdout}"
             logging.info(out_msg)
-    logging.info("Pipeline executado com sucesso de ponta a ponta.")
+    logging.info("Pipeline executed successfully from end to end.")
 
 if __name__ == "__main__":
     run_pipeline()
