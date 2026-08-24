@@ -1,12 +1,13 @@
 import os
 import pandas as pd
 import requests
+from datetime import datetime
 from sqlalchemy import create_engine
 
 INDICATORS = {
     "IPCA - Monthly (%)": "433",
-    "Selic Rate - Annualized (%)": "432",
-    "USD/BRL Exchange Rate": "1"
+    "Selic Rate - Daily (% a.a.)": "11",
+    "USD/BRL Exchange Rate (Purchase)": "10813"
 }
 
 def ingest_macro_data():
@@ -15,10 +16,13 @@ def ingest_macro_data():
     engine = create_engine(conn_str)
     
     all_dfs = []
+    # BCB API requires date filters for large series (max 10 years per query or explicit window)
+    start_date = "01/01/2015"
+    end_date = datetime.now().strftime("%d/%m/%Y")
     
     print("[*] Fetching comprehensive macroeconomic series from Central Bank of Brazil (BCB SGS)...")
     for name, series_id in INDICATORS.items():
-        url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{series_id}/dados?formato=json"
+        url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{series_id}/dados?formato=json&dataInicial={start_date}&dataFinal={end_date}"
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
@@ -29,8 +33,10 @@ def ingest_macro_data():
                 df['indicator_name'] = name
                 all_dfs.append(df[['date', 'indicator_name', 'value']])
                 print(f"[+] Loaded {len(df)} records for indicator: {name}")
+            else:
+                print(f"[-] Warning: Empty response for series {series_id} ({name})")
         else:
-            print(f"[-] Warning: Failed to fetch series {series_id} for {name}")
+            print(f"[-] Warning: Failed to fetch series {series_id} for {name} (Status: {response.status_code})")
             
     if all_dfs:
         final_df = pd.concat(all_dfs, ignore_index=True).dropna(subset=['value'])
