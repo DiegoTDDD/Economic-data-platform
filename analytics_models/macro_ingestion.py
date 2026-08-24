@@ -23,7 +23,7 @@ def ingest_macro_data():
     session = requests.Session()
     session.headers.update(headers)
     
-    # 1. IPCA (Series 433)
+    # 1. IPCA (Series 433) with date bounds
     print("[*] Fetching IPCA from Central Bank of Brazil (BCB SGS Series 433)...")
     try:
         url_ipca = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados?formato=json&dataInicial={start_date_br}&dataFinal={end_date_br}"
@@ -38,15 +38,13 @@ def ingest_macro_data():
                 clean_df = df.dropna(subset=['date', 'value'])[['date', 'indicator_name', 'value']]
                 all_dfs.append(clean_df)
                 print(f"[+] Successfully loaded {len(clean_df)} records for IPCA.")
-        else:
-            print(f"[-] Warning: IPCA API returned status {response.status_code}")
     except Exception as e:
         print(f"[-] Error fetching IPCA: {e}")
 
-    # 2. Selic Target Rate (Series 432)
+    # 2. Selic Target Rate (Series 432) fetched raw and filtered locally to prevent 406 error
     print("[*] Fetching Selic Target Rate from Central Bank of Brazil (BCB SGS Series 432)...")
     try:
-        url_selic = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados?formato=json&dataInicial={start_date_br}&dataFinal={end_date_br}"
+        url_selic = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados?formato=json"
         response = session.get(url_selic, timeout=30)
         if response.status_code == 200:
             data = response.json()
@@ -55,7 +53,10 @@ def ingest_macro_data():
                 df['date'] = pd.to_datetime(df['data'], format='%d/%m/%Y', errors='coerce').dt.date
                 df['value'] = pd.to_numeric(df['valor'], errors='coerce')
                 df['indicator_name'] = "Selic Target Rate (% a.a.)"
-                clean_df = df.dropna(subset=['date', 'value'])[['date', 'indicator_name', 'value']]
+                # Filter locally from 2015-01-01 onwards
+                min_date = pd.to_datetime(start_date_iso).date()
+                clean_df = df.dropna(subset=['date', 'value'])
+                clean_df = clean_df[clean_df['date'] >= min_date][['date', 'indicator_name', 'value']]
                 all_dfs.append(clean_df)
                 print(f"[+] Successfully loaded {len(clean_df)} records for Selic Target Rate.")
         else:
