@@ -1,15 +1,9 @@
 import os
-import io
 import pandas as pd
 import requests
+import yfinance as yf
 from datetime import datetime
 from sqlalchemy import create_engine
-
-INDICATORS = {
-    "IPCA - Monthly (%)": "433",
-    "Selic Rate - Daily (% a.a.)": "11",
-    "USD/BRL Exchange Rate (Purchase)": "10813"
-}
 
 def ingest_macro_data():
     db_host = os.getenv("DB_HOST", "localhost")
@@ -17,42 +11,80 @@ def ingest_macro_data():
     engine = create_engine(conn_str)
     
     all_dfs = []
-    start_date = "01/01/2015"
-    end_date = datetime.now().strftime("%d/%m/%Y")
+    start_date = "2015-01-01"
     
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        "Accept": "text/csv,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*"
     }
     
-    print("[*] Fetching comprehensive macroeconomic series from Central Bank of Brazil (BCB SGS via CSV with headers)...")
-    for name, series_id in INDICATORS.items():
-        url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{series_id}/dados?formato=csv&dataInicial={start_date}&dataFinal={end_date}"
-        try:
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                # Use io.StringIO to parse CSV text downloaded via requests
-                df = pd.read_csv(io.StringIO(response.text), sep=';', decimal=',')
-                if not df.empty and 'data' in df.columns and 'valor' in df.columns:
-                    df['date'] = pd.to_datetime(df['data'], format='%d/%m/%Y').dt.date
-                    df['value'] = pd.to_numeric(df['valor'], errors='coerce')
-                    df['indicator_name'] = name
-                    all_dfs.append(df[['date', 'indicator_name', 'value']])
-                    print(f"[+] Loaded {len(df)} records for indicator: {name}")
-                else:
-                    print(f"[-] Warning: Empty or malformed response for series {series_id} ({name})")
-            else:
-                print(f"[-] Warning: Failed to fetch series {series_id} for {name} (Status: {response.status_code})")
-        except Exception as e:
-            print(f"[-] Error fetching series {series_id} for {name}: {e}")
-            
+    session = requests.Session()
+    session.headers.update(headers)
+    
+    # 1. Ingest IPCA from BCB SGS (Series 433)
+    print("[*] Fetching IPCA from Central Bank of Brazil (BCB SGS)...")
+    try:
+        url_ipca = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados?formato=json"
+        response = session.get(url_ipca, timeout=30)
+        if response.status_code == 200:
+            data = response.json()
+            if data:
+                df = pd.DataFrame(data)
+                df['date'] = pd.to_datetime(df['data'], format='%d/%m/%Y').dt.date
+                df['value'] = pd.to_numeric(df['valor'], errors='coerce')
+                df['indicator_name'] = "IPCA - Monthly (%)"
+                filtered_df = df[df['date'] >= pd.to_datetime(start_date).date()][['date', 'indicator_name', 'value']]
+                all_dfs.append(filtered_df)
+                print(f"[+] Loaded {len(filtered_df)} records for IPCA")
+    except Exception as e:
+        print(f"[-] Error fetching IPCA: {e}")
+
+    # 2. Ingest Selic Rate from BCB SGS (Series 11)
+    print("[*] Fetching Selic Rate from Central Bank of Brazil (BCB SGS)...")
+    try:
+        url_selic = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados?formato=json"
+        response = session.get(url_selic, timeout=30)
+        if response.status_code == 200:
+            data = response.json()
+            if data:
+                df = pd.DataFrame(data)
+                df['date'] = pd.to_datetime(df['data'], format='%d/%m/%Y').dt.date
+                df['value'] = pd.to_numeric(df['valor'], errors='coerce')
+                df['indicator_name'] = "Selic Rate - Daily (% a.a.)"
+                filtered_df = df[df['date'] >= pd.to_datetime(start_date).date()][['date', 'indicator_name', 'value']]
+                all_dfs.append(filtered_df)
+                print(f"[+] Loaded {len(filtered_df)} records for Selic Rate")
+        else:
+            print(f"[-] Warning: Selic API returned status {response.status_code}")
+    except Exception as e:
+        print(f"[-] Error fetching Selic Rate: {e}")
+
+    # 3. Ingest USD/BRL Exchange Rate via yfinance (Robust & Reliable)
+    print("[*] Fetching USD/BRL Exchange Rate via yfinance...")
+    try:
+        usdcny = yf.download("USDBRL=X", start=start_date, progress=False)
+        if not usdcny.empty:
+            usdcny = usdcny.reset_index()
+            if isinstance(usdcny.columns, pd.MultiIndex):
+                usdcny.columns = [col[0] if col[0] != '' else col[1] for col in usdcny.columns]
+            close_col = 'Close' if 'Close' in usdcny.columns else usdcny.columns[1]
+            df_usd = pd.DataFrame({
+                'date': pd.to_datetime(usdcny['Date']).dt.date,
+                'indicator_name': 'USD/BRL Exchange Rate (Purchase)',
+                'value': usdcny[close_col]
+            }).dropna(subset=['value'])
+            all_dfs.append(df_usd)
+            print(f"[+] Loaded {len(df_usd)} records for USD/BRL Exchange Rate")
+    except Exception as e:
+        print(f"[-] Error fetching USD/BRL via yfinance: {e}")
+
     if all_dfs:
         final_df = pd.concat(all_dfs, ignore_index=True).dropna(subset=['value'])
         print(f"[*] Inserting total of {len(final_df)} macroeconomic records into gold_economic_indicators...")
         final_df.to_sql('gold_economic_indicators', engine, if_exists='replace', index=False)
         print("[+] Macroeconomic multi-indicator ingestion completed successfully.")
     else:
-        raise ValueError("No macroeconomic data retrieved from BCB APIs.")
+        raise ValueError("No macroeconomic data retrieved from sources.")
 
 if __name__ == "__main__":
     ingest_macro_data()
