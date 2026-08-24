@@ -1,5 +1,4 @@
 import os
-import io
 import pandas as pd
 import requests
 import yfinance as yf
@@ -18,13 +17,13 @@ def ingest_macro_data():
     
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        "Accept": "application/json, text/plain, */*"
     }
     
     session = requests.Session()
     session.headers.update(headers)
     
-    # 1. IPCA (Series 433) via JSON
+    # 1. IPCA (Series 433)
     print("[*] Fetching IPCA from Central Bank of Brazil (BCB SGS Series 433)...")
     try:
         url_ipca = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados?formato=json&dataInicial={start_date_br}&dataFinal={end_date_br}"
@@ -42,18 +41,21 @@ def ingest_macro_data():
     except Exception as e:
         print(f"[-] Error fetching IPCA: {e}")
 
-    # 2. Selic Target Rate (Series 432) via CSV format to completely eliminate 406 error
-    print("[*] Fetching Selic Target Rate from Central Bank of Brazil (BCB SGS Series 432 via CSV)...")
+    # 2. Selic Target Rate (Series 432) fetched via raw JSON without URL params, filtered locally
+    print("[*] Fetching Selic Target Rate from Central Bank of Brazil (BCB SGS Series 432)...")
     try:
-        url_selic = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados?formato=csv&dataInicial={start_date_br}&dataFinal={end_date_br}"
+        url_selic = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados?formato=json"
         response = session.get(url_selic, timeout=30)
         if response.status_code == 200:
-            df = pd.read_csv(io.StringIO(response.text), sep=';', decimal=',')
-            if not df.empty and 'data' in df.columns and 'valor' in df.columns:
+            data = response.json()
+            if data:
+                df = pd.DataFrame(data)
                 df['date'] = pd.to_datetime(df['data'], format='%d/%m/%Y', errors='coerce').dt.date
                 df['value'] = pd.to_numeric(df['valor'], errors='coerce')
                 df['indicator_name'] = "Selic Target Rate (% a.a.)"
-                clean_df = df.dropna(subset=['date', 'value'])[['date', 'indicator_name', 'value']]
+                min_date = pd.to_datetime(start_date_iso).date()
+                clean_df = df.dropna(subset=['date', 'value'])
+                clean_df = clean_df[clean_df['date'] >= min_date][['date', 'indicator_name', 'value']]
                 all_dfs.append(clean_df)
                 print(f"[+] Successfully loaded {len(clean_df)} records for Selic Target Rate.")
         else:
