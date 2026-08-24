@@ -16,14 +16,18 @@ def ingest_macro_data():
     engine = create_engine(conn_str)
     
     all_dfs = []
-    # BCB API requires date filters for large series (max 10 years per query or explicit window)
     start_date = "01/01/2015"
     end_date = datetime.now().strftime("%d/%m/%Y")
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/json"
+    }
     
     print("[*] Fetching comprehensive macroeconomic series from Central Bank of Brazil (BCB SGS)...")
     for name, series_id in INDICATORS.items():
         url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{series_id}/dados?formato=json&dataInicial={start_date}&dataFinal={end_date}"
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         if response.status_code == 200:
             data = response.json()
             if data:
