@@ -1,21 +1,18 @@
 version: '3.8'
+
 services:
-  db_gold:
-    image: postgres:15
-    container_name: db_gold
+  postgres:
+    image: postgres:15-alpine
+    container_name: economics_postgres_gold
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: adminpassword
       POSTGRES_DB: economics_gold
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
 
-  dashboard:
-    build: 
-      context: ../powerbi_models
-      dockerfile: Dockerfile
-    container_name: app_stream_gold
-    ports:
-      - "8501:8501"
-    depends_on:
-      - db_gold
+volumes:
+  postgres_data:
