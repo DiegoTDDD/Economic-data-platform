@@ -1,20 +1,17 @@
 up:
-	cd infrastructure && docker-compose up -d
+	cd infrastructure && docker-compose up -d --build
 
 down:
 	cd infrastructure && docker-compose down
 
+build:
+	cd infrastructure && docker-compose build
+
 logs:
 	cd infrastructure && docker-compose logs -f
 
-init:
-	python database_init.py
-
-pipeline:
-	python orchestrator.py
-
-dashboard:
-	streamlit run dashboards/main_dashboard.py
+pipeline-run:
+	cd infrastructure && docker-compose start pipeline
 
 test:
 	python -m unittest discover -s tests

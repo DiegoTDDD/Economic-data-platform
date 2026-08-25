@@ -12,6 +12,38 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d economics_gold"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  pipeline:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: economics_pipeline
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+    command: sh -c "python database_init.py && python orchestrator.py"
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: economics_dashboard
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+    ports:
+      - "8501:8501"
+    command: streamlit run dashboards/main_dashboard.py --server.address=0.0.0.0
     restart: always
 
 volumes:
