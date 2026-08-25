@@ -1,39 +1,53 @@
-# 📊 Economic Intelligence & Financial Markets Data Platform
+# 📊 Economic Intelligence & Financial Markets Platform
 
-Production-grade, highly scalable data engineering architecture designed to ingest, process, store, and visualize real-time macroeconomic indicators and cryptocurrency market metrics.
+![Python](https://img.shields.io/badge/Python-3.10-blue?style=for-the-badge&logo=python)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=for-the-badge&logo=postgresql)
+![Docker](https://img.shields.io/badge/Docker-Containerized-blue?style=for-the-badge&logo=docker)
+![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red?style=for-the-badge&logo=streamlit)
+
+Uma plataforma end-to-end de Engenharia de Dados desenvolvida para extrair, transformar e visualizar indicadores macroeconômicos (Banco Central do Brasil) e dados históricos de criptomoedas (Yahoo Finance).
 
 ---
 
-## 🏗️ System Architecture
-# 1. Recria o README.md sem caracteres de formatação que quebram o bash
-cat << 'EOF' > README.md
-# Economic Intelligence and Financial Markets Data Platform
+## 🏗️ Arquitetura do Projeto
 
-Production-grade, highly scalable data engineering architecture designed to ingest, process, store, and visualize real-time macroeconomic indicators and cryptocurrency market metrics.
+O projeto foi construído seguindo as melhores práticas de Data Engineering, estruturado 100% em containers Docker para garantir isolamento e reprodutibilidade.
 
-## System Architecture
+1. **Extract & Load (EL):** Scripts em Python (`pandas`, `requests`, `yfinance`) que extraem dados via API e carregam em um Data Warehouse.
+2. **Storage (Gold Layer):** Banco de dados relacional (PostgreSQL) otimizado para consultas analíticas.
+3. **Analytics & Visualization:** Dashboard interativo construído com Streamlit e Plotly.
+4. **CI/CD:** Pipeline automatizado no GitHub Actions para testes e validação contínua.
 
-[ Central Bank API (BCB SGS) ] ---> [ Python Ingestion Pipelines ] ---> [ PostgreSQL Gold Layer ] ---> [ Streamlit Dashboard ]
-[ Yahoo Finance (BTC & USD) ] --->         (Pandas & Requests)             (Dockerized)                 (Plotly Visualizations)
+📄 **[Clique aqui para baixar a Documentação Oficial de Arquitetura em PDF](Documentacao_Arquitetura.pdf)**
 
-## Core Components
+---
 
-* Data Ingestion (analytics_models/): Automated extraction of Brazilian macroeconomic series (IPCA, Unemployment Rate) and financial assets (Bitcoin, USD/BRL exchange rates) using robust API sessions and rate-limiting safeguards.
-* Storage Layer (database_init.py): Relational schema optimized for analytical queries running on containerized PostgreSQL.
-* Orchestrator (orchestrator.py): Master workflow runner executing initialization, extraction, and validation sequentially with comprehensive logging.
-* Analytical Dashboard (dashboards/main_dashboard.py): Interactive web application powered by Streamlit and Plotly for deep exploratory data analysis.
-* CI/CD (.github/workflows/ci_pipeline.yml): Automated continuous integration pipeline testing database contracts and ingestion reliability on every commit.
+## 📸 Demonstração Visual
 
-## Quick Start Guide
+### 1. Visualização Analítica (Camada de Consumo)
+**Indicadores Macroeconômicos Empilhados (IPCA, Taxa de Desemprego e Câmbio):**
+![Macroeconomic Dashboard](assets/macro.png)
 
-1. Spin up Infrastructure:
-   make up
+**Histórico de Criptomoedas (Bitcoin - Preço e Volume):**
+![Bitcoin Dashboard](assets/bitcoin.png)
 
-2. Run End-to-End Pipeline:
-   make pipeline
+### 2. Motor de Engenharia (Processo de ETL/ELT)
+**Orquestração e Execução do Pipeline (Logs do Docker):**
+![Pipeline Logs](assets/logs.png)
 
-3. Launch Dashboard:
-   make dashboard
+**Armazenamento na Camada Gold (PostgreSQL):**
+![Database Preview](assets/database.png)
 
-4. Execute Unit Tests:
-   make test
+**Automação e Testes (CI/CD no GitHub Actions):**
+![GitHub Actions CI/CD](assets/actions.png)
+
+---
+
+## 🚀 Como Executar o Projeto Localmente
+
+**Pré-requisitos:** Ter o `Docker` e o `Docker Compose` instalados.
+
+1. Clone o repositório:
+```bash
+git clone [https://github.com/DiegoTDDD/Economic-data-platform.git](https://github.com/DiegoTDDD/Economic-data-platform.git)
+cd Economic-data-platform
