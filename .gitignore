@@ -1,0 +1,46 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Environment variables / secrets ---
+.env
+*.env.local
+
+# --- Jupyter Notebook ---
+.ipynb_checkpoints/
+
+# --- Testing / coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Docker ---
+*.pid
+
+# --- Data artifacts (avoid committing generated datasets) ---
+*.parquet
+*.csv
+!requirements.txt
+
+# --- Logs ---
+*.log
+
+# --- IDEs / editors ---
+.vscode/
+.idea/
+*.swp
+
+# --- OS ---
+.DS_Store
+Thumbs.db
