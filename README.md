@@ -16,22 +16,39 @@ An end-to-end ELT (Extract, Load, Transform) data platform that ingests macroeco
 
 The platform is built as a modular, containerized ELT pipeline. It separates extraction, transactional storage, orchestration, and presentation into isolated layers to guarantee reproducibility and data integrity.
 
-```text
-[ Disparate APIs ] ---> [ Python Ingestion ] ---> [ PostgreSQL Gold Layer ] ---> [ Streamlit Dashboards ]
-                              |                              |
-                        (Modular Scripts)             (Strict Relational Schema)
+```mermaid
+flowchart LR
+    A[Disparate APIs] -->|Modular Scripts| B[Python Ingestion]
+    B --> C[(PostgreSQL Gold Layer)]
+    C -->|Strict Relational Schema| D[Streamlit Dashboards]
 ```
 
 ## 🚀 Demonstration & Visual Evidence
 
-1. **Ingestion & Orchestration Logs**
-   Modular extraction scripts fetch, validate, and normalize raw JSON payloads into clean DataFrames before inserting them into the database.
-2. **PostgreSQL Gold Layer Schema**
-   Enforcing schema-on-write with ACID guarantees, ensuring analytical queries run on clean, normalized time-series data.
-3. **Macroeconomic & Financial Dashboards**
-   Interactive Streamlit dashboards powered by optimized SQL queries directly from the Gold layer.
-4. **CI/CD Automation (GitHub Actions)**
-   Automated build-and-test pipeline validating code quality on every push.
+**Ingestion & Orchestration Logs**
+Modular extraction scripts fetch, validate, and normalize raw JSON payloads into clean DataFrames before inserting them into the database.
+
+![Ingestion and orchestration logs](./assets/logs.png)
+
+**PostgreSQL Gold Layer**
+Enforcing schema-on-write with ACID guarantees, ensuring analytical queries run on clean, normalized time-series data.
+
+![PostgreSQL Gold layer query](./assets/database.png)
+
+**Macroeconomic Dashboard**
+Interactive Streamlit dashboard tracking BCB SGS and IBGE indicators — exchange rate, unemployment, and IPCA — powered by optimized SQL queries directly from the Gold layer.
+
+![Macroeconomic indicators dashboard](./assets/macro.png)
+
+**Cryptocurrency Dashboard**
+Historical BTC-USD close price and trading volume, sourced via yfinance and served from the same Gold layer.
+
+![Bitcoin dashboard](./assets/bitcoin.png)
+
+**CI/CD Automation (GitHub Actions)**
+Automated build-and-test pipeline validating code quality on every push.
+
+![GitHub Actions CI/CD pipeline](./assets/actions.png)
 
 ## 🛠️ Tech Stack & Components
 
