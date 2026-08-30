@@ -8,7 +8,7 @@ class PDF(FPDF):
         self.cell(0, 10, 'Economic Intelligence & Financial Markets Platform', 0, 1, 'C')
         self.set_font('Arial', 'I', 10)
         self.set_text_color(128, 128, 128)
-        self.cell(0, 10, 'Documentacao Oficial de Arquitetura e Engenharia de Dados', 0, 1, 'C')
+        self.cell(0, 10, 'Official Architecture & Data Engineering Documentation', 0, 1, 'C')
         self.line(10, 30, 200, 30)
         self.ln(10)
 
@@ -16,7 +16,7 @@ class PDF(FPDF):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.set_text_color(128, 128, 128)
-        self.cell(0, 10, f'Página {self.page_no()} | Gerado em {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 0, 'C')
+        self.cell(0, 10, f'Page {self.page_no()} | Generated on {datetime.now().strftime("%m/%d/%Y %H:%M")}', 0, 0, 'C')
 
     def chapter_title(self, title):
         self.set_font('Arial', 'B', 12)
@@ -31,53 +31,48 @@ class PDF(FPDF):
         self.multi_cell(0, 7, body)
         self.ln(2)
 
-# Instancia o PDF
 pdf = PDF()
 pdf.add_page()
 
-# Seção 1: Visão Geral
-pdf.chapter_title('1. Visao Geral do Projeto')
-texto_visao = (
-    "A Economic Intelligence Platform e uma solucao corporativa end-to-end de Engenharia de Dados. "
-    "Seu objetivo e extrair, tratar e armazenar indicadores macroeconomicos do Banco Central do Brasil (SGS) "
-    "e dados historicos de criptomoedas (Yahoo Finance), consolidando tudo em um Data Warehouse (PostgreSQL) "
-    "para consumo via Dashboard Interativo (Streamlit)."
+pdf.chapter_title('1. Project Overview')
+overview_text = (
+    "The Economic Intelligence Platform is an end-to-end enterprise Data Engineering solution. "
+    "Its objective is to extract, process, and store macroeconomic indicators from the Central Bank "
+    "of Brazil (SGS) and historical cryptocurrency data (Yahoo Finance), consolidating everything into "
+    "a Data Warehouse (PostgreSQL) for consumption via an Interactive Dashboard (Streamlit)."
 )
-pdf.chapter_body(texto_visao)
+pdf.chapter_body(overview_text)
 
-# Seção 2: Arquitetura e Infraestrutura
-pdf.chapter_title('2. Arquitetura e Infraestrutura')
-texto_arq = (
-    "A infraestrutura foi 100% containerizada utilizando Docker e Docker Compose, garantindo isolamento "
-    "e reprodutibilidade. Os servicos orquestrados incluem:\n\n"
-    "- economics_postgres_gold: Banco de Dados Relacional (PostgreSQL 15).\n"
-    "- economics_pipeline: Orquestrador de extracao em Python (Pandas, Requests, yFinance).\n"
-    "- economics_dashboard: Aplicacao web analitica (Streamlit + Plotly).\n\n"
-    "O controle de qualidade e feito via CI/CD no GitHub Actions, que levanta a base e roda testes unitarios "
-    "a cada novo commit na branch principal."
+pdf.chapter_title('2. Architecture & Infrastructure')
+architecture_text = (
+    "The infrastructure is 100% containerized using Docker and Docker Compose, ensuring isolation "
+    "and reproducibility. The orchestrated services include:\n\n"
+    "- economics_postgres_gold: Relational Database (PostgreSQL 15).\n"
+    "- economics_pipeline: Python extraction orchestrator (Pandas, Requests, yFinance).\n"
+    "- economics_dashboard: Analytical web application (Streamlit + Plotly).\n\n"
+    "Quality control is handled via CI/CD on GitHub Actions, which spins up the database and runs "
+    "unit tests on every new commit to the main branch."
 )
-pdf.chapter_body(texto_arq)
+pdf.chapter_body(architecture_text)
 
-# Seção 3: Pipelines de Ingestao
-pdf.chapter_title('3. Modelos de Ingestao (Extract & Load)')
-texto_ing = (
-    "Os pipelines operam com tratamento de erros, tipagem dinamica e conexao resiliente:\n"
-    "1. Criptomoedas (BTC-USD): Ingestao diaria de preco de fechamento e volume de negociacao.\n"
-    "2. Macroeconomia: Coleta de IPCA (Mensal), Taxa de Desemprego (Serie 24369) e Cambio Dolar-Real (USD/BRL).\n\n"
-    "Os dados sao higienizados (drop_duplicates, dropna) antes do carregamento via SQLAlchemy."
+pdf.chapter_title('3. Ingestion Models (Extract & Load)')
+ingestion_text = (
+    "The pipelines operate with error handling, dynamic typing, and resilient connections:\n"
+    "1. Cryptocurrency (BTC-USD): Daily ingestion of closing price and trading volume.\n"
+    "2. Macroeconomics: Collection of IPCA (Monthly), Unemployment Rate (Series 24369), and the "
+    "USD/BRL exchange rate.\n\n"
+    "Data is sanitized (drop_duplicates, dropna) before being loaded via SQLAlchemy."
 )
-pdf.chapter_body(texto_ing)
+pdf.chapter_body(ingestion_text)
 
-# Seção 4: Modelagem de Dados (Gold Layer)
-pdf.chapter_title('4. Modelagem de Dados (Gold Layer)')
-texto_mod = (
-    "O banco de dados Economics Gold contem as seguintes tabelas otimizadas:\n\n"
+pdf.chapter_title('4. Data Modeling (Gold Layer)')
+modeling_text = (
+    "The Economics Gold database contains the following optimized tables:\n\n"
     "- gold_bitcoin_metrics: date (PK), close_price, volume.\n"
     "- gold_economic_indicators: date (PK), indicator_name (PK), value.\n\n"
-    "As tabelas possuem schemas relacionais diretos para facilitar consultas analiticas performaticas."
+    "The tables use direct relational schemas to facilitate performant analytical queries."
 )
-pdf.chapter_body(texto_mod)
+pdf.chapter_body(modeling_text)
 
-# Gera o arquivo
-pdf.output('Documentacao_Arquitetura.pdf')
-print("[+] Relatorio PDF gerado com sucesso: Documentacao_Arquitetura.pdf")
+pdf.output('Architecture_Documentation.pdf')
+print("[+] PDF report successfully generated: Architecture_Documentation.pdf")
