@@ -1,7 +1,7 @@
 # Economic Intelligence & Financial Markets Platform
 
 ![CI/CD Pipeline Status](https://github.com/DiegoTDDD/Economic-data-platform/actions/workflows/ci_pipeline.yml/badge.svg)
-![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Gold_Layer-336791?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)
@@ -21,6 +21,11 @@ flowchart LR
     A[Disparate APIs] -->|Modular Scripts| B[Python Ingestion]
     B --> C[(PostgreSQL Gold Layer)]
     C -->|Strict Relational Schema| D[Streamlit Dashboards]
+
+    style A fill:#1f2937,stroke:#38bdf8,stroke-width:1px,color:#f8fafc
+    style B fill:#1f2937,stroke:#38bdf8,stroke-width:1px,color:#f8fafc
+    style C fill:#0f172a,stroke:#facc15,stroke-width:2px,color:#f8fafc
+    style D fill:#1f2937,stroke:#38bdf8,stroke-width:1px,color:#f8fafc
 ```
 
 ## 🚀 Demonstration & Visual Evidence
