@@ -41,7 +41,7 @@ Enforcing schema-on-write with ACID guarantees, ensuring analytical queries run 
 ![PostgreSQL Gold layer query](./assets/database.png)
 
 **Macroeconomic Dashboard**
-Interactive Streamlit dashboard tracking BCB SGS and IBGE indicators — exchange rate, unemployment, and IPCA — powered by optimized SQL queries directly from the Gold layer.
+Interactive Streamlit dashboard tracking USD/BRL exchange rate, unemployment, and IPCA inflation — powered by optimized SQL queries directly from the Gold layer.
 
 ![Macroeconomic indicators dashboard](./assets/macro.png)
 
@@ -99,8 +99,7 @@ docker compose down
 
 ## 📊 Data Sources
 
-* **IBGE:** IPCA inflation index and Unemployment metrics.
-* **Banco Central do Brasil (BCB SGS):** Official exchange rates.
-* **yfinance API:** Historical Bitcoin (BTC-USD) market prices.
+* **Banco Central do Brasil (BCB SGS):** IPCA inflation index (Series 433) and Unemployment Rate (Series 24369).
+* **yfinance API:** USD/BRL exchange rate and historical Bitcoin (BTC-USD) market prices.
 
 *Note: Raw data is dynamically extracted via APIs; no static datasets are hardcoded in the repository.*
