@@ -27,7 +27,7 @@ services:
         condition: service_healthy
     environment:
       DB_HOST: postgres
-    command: sh -c "python database_init.py && python orchestrator.py"
+    command: sh -c "python orchestrator.py"
 
   dashboard:
     build:
