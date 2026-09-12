@@ -83,6 +83,7 @@ cd Economic-data-platform
 cd infrastructure
 docker compose up -d --build
 ```
+> Runs out of the box with sane defaults — no configuration required. To customize credentials or ports, copy `infrastructure/.env.example` to `infrastructure/.env` and edit the values before starting.
 
 **3. Check the containers**
 ```bash
