@@ -3,15 +3,15 @@ services:
     image: postgres:15-alpine
     container_name: economics_postgres_gold
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpassword
-      POSTGRES_DB: economics_gold
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-adminpassword}
+      POSTGRES_DB: ${DB_NAME:-economics_gold}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d economics_gold"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-economics_gold}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -26,7 +26,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DB_HOST: postgres
+      DB_HOST: ${DB_HOST:-postgres}
     command: sh -c "python orchestrator.py"
 
   dashboard:
@@ -38,9 +38,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DB_HOST: postgres
+      DB_HOST: ${DB_HOST:-postgres}
     ports:
-      - "8501:8501"
+      - "${STREAMLIT_PORT:-8501}:8501"
     command: streamlit run dashboards/main_dashboard.py --server.address=0.0.0.0
     restart: always
 
