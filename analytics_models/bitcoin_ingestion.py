@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import yfinance as yf
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 def ingest_bitcoin_data():
     print("[*] Downloading historical Bitcoin (BTC-USD) data...")
@@ -42,7 +42,11 @@ def ingest_bitcoin_data():
     engine = create_engine(conn_str)
 
     print(f"[*] Inserting {len(df_clean)} records into the gold_bitcoin_metrics table...")
-    df_clean.to_sql('gold_bitcoin_metrics', engine, if_exists='replace', index=False)
+    # Clear existing rows while preserving the schema defined in database_init.py
+    # (id, created_at) — refreshing the data without dropping/recreating the table.
+    with engine.begin() as conn:
+        conn.execute(text("TRUNCATE TABLE gold_bitcoin_metrics RESTART IDENTITY"))
+    df_clean.to_sql('gold_bitcoin_metrics', engine, if_exists='append', index=False)
     print("[+] Bitcoin ingestion completed successfully.")
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 import yfinance as yf
 from datetime import datetime
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 def ingest_macro_data():
     db_host = os.getenv("DB_HOST", "localhost")
@@ -87,7 +87,11 @@ def ingest_macro_data():
     if all_dfs:
         final_df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset=['date', 'indicator_name'])
         print(f"[*] Inserting total of {len(final_df)} macroeconomic records into gold_economic_indicators...")
-        final_df.to_sql('gold_economic_indicators', engine, if_exists='replace', index=False)
+        # Clear existing rows while preserving the schema defined in database_init.py
+        # (id, created_at) — refreshing the data without dropping/recreating the table.
+        with engine.begin() as conn:
+            conn.execute(text("TRUNCATE TABLE gold_economic_indicators RESTART IDENTITY"))
+        final_df.to_sql('gold_economic_indicators', engine, if_exists='append', index=False)
         print("[+] Macroeconomic multi-indicator ingestion completed successfully with 0 errors.")
     else:
         raise ValueError("Critical error: No macroeconomic data retrieved from any source.")
