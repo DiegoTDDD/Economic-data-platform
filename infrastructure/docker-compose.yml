@@ -40,6 +40,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      pipeline:
+        condition: service_completed_successfully
     environment:
       DB_HOST: ${DB_HOST:-postgres}
       DB_USER: ${DB_USER:-admin}
