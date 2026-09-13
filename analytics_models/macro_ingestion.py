@@ -7,7 +7,11 @@ from sqlalchemy import create_engine
 
 def ingest_macro_data():
     db_host = os.getenv("DB_HOST", "localhost")
-    conn_str = f"postgresql://admin:adminpassword@{db_host}:5432/economics_gold"
+    db_port = os.getenv("DB_PORT", "5432")
+    db_user = os.getenv("DB_USER", "admin")
+    db_password = os.getenv("DB_PASSWORD", "adminpassword")
+    db_name = os.getenv("DB_NAME", "economics_gold")
+    conn_str = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     engine = create_engine(conn_str)
     
     all_dfs = []
@@ -64,16 +68,16 @@ def ingest_macro_data():
     # 3. USD/BRL Exchange Rate via yfinance
     print("[*] Fetching USD/BRL Exchange Rate via yfinance...")
     try:
-        usdcny = yf.download("USDBRL=X", start=start_date_iso, progress=False)
-        if not usdcny.empty:
-            usdcny = usdcny.reset_index()
-            if isinstance(usdcny.columns, pd.MultiIndex): 
-                usdcny.columns = [col[0] if col[0] != '' else col[1] for col in usdcny.columns]
-            close_col = 'Close' if 'Close' in usdcny.columns else usdcny.columns[1]
+        usd_brl = yf.download("USDBRL=X", start=start_date_iso, progress=False)
+        if not usd_brl.empty:
+            usd_brl = usd_brl.reset_index()
+            if isinstance(usd_brl.columns, pd.MultiIndex): 
+                usd_brl.columns = [col[0] if col[0] != '' else col[1] for col in usd_brl.columns]
+            close_col = 'Close' if 'Close' in usd_brl.columns else usd_brl.columns[1]
             df_usd = pd.DataFrame({
-                'date': pd.to_datetime(usdcny['Date'], errors='coerce').dt.date,
+                'date': pd.to_datetime(usd_brl['Date'], errors='coerce').dt.date,
                 'indicator_name': 'USD/BRL Exchange Rate (Purchase)',
-                'value': pd.to_numeric(usdcny[close_col], errors='coerce')
+                'value': pd.to_numeric(usd_brl[close_col], errors='coerce')
             }).dropna(subset=['date', 'value'])
             all_dfs.append(df_usd)
             print(f"[+] Successfully loaded {len(df_usd)} records for USD/BRL Exchange Rate.")

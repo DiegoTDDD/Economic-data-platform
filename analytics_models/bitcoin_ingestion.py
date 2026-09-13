@@ -34,7 +34,11 @@ def ingest_bitcoin_data():
 
     # Set up connection to the Gold database on Docker
     db_host = os.getenv("DB_HOST", "localhost")
-    conn_str = f"postgresql://admin:adminpassword@{db_host}:5432/economics_gold"
+    db_port = os.getenv("DB_PORT", "5432")
+    db_user = os.getenv("DB_USER", "admin")
+    db_password = os.getenv("DB_PASSWORD", "adminpassword")
+    db_name = os.getenv("DB_NAME", "economics_gold")
+    conn_str = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     engine = create_engine(conn_str)
 
     print(f"[*] Inserting {len(df_clean)} records into the gold_bitcoin_metrics table...")

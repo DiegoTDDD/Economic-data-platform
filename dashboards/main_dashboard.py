@@ -13,7 +13,11 @@ st.set_page_config(page_title="Economic Intelligence", layout="wide")
 @st.cache_data
 def load_data():
     db_host = os.getenv("DB_HOST", "localhost")
-    engine = create_engine(f"postgresql://admin:adminpassword@{db_host}:5432/economics_gold")
+    db_port = os.getenv("DB_PORT", "5432")
+    db_user = os.getenv("DB_USER", "admin")
+    db_password = os.getenv("DB_PASSWORD", "adminpassword")
+    db_name = os.getenv("DB_NAME", "economics_gold")
+    engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
 
     df_btc = pd.read_sql("SELECT * FROM gold_bitcoin_metrics ORDER BY date", engine)
     df_macro = pd.read_sql("SELECT * FROM gold_economic_indicators ORDER BY date", engine)

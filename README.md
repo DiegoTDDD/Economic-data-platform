@@ -61,8 +61,8 @@ Automated build-and-test pipeline validating code quality on every push.
 |---|---|---|
 | Ingestion | Python (requests, pandas) | API data extraction, JSON parsing, and type enforcement. |
 | Storage | PostgreSQL | ACID-compliant relational storage for clean time-series metrics. |
-| Orchestration | Python (orchestrator.py) | Execution sequencing and safe database dependency initialization. |
-| Infrastructure | Docker & Docker Compose | Network isolation and environment-agnostic reproducibility. |
+| Orchestration | Python (orchestrator.py) | Execution sequencing and fail-fast error handling. |
+| Infrastructure | Docker & Docker Compose | Network isolation, health-check-based startup ordering, and environment-agnostic reproducibility. |
 | CI/CD | GitHub Actions | Automated build and test pipeline on every repository push. |
 | Presentation | Streamlit & Plotly | Interactive operations console and real-time visualization. |
 
