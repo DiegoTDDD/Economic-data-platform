@@ -16,7 +16,11 @@ def check_infrastructure():
 
     # 2. Test connectivity with the PostgreSQL Gold layer
     host = os.getenv('DB_HOST', 'localhost')
-    conn_str = f'postgresql://admin:adminpassword@{host}:5432/economics_gold'
+    port = os.getenv('DB_PORT', '5432')
+    user = os.getenv('DB_USER', 'admin')
+    password = os.getenv('DB_PASSWORD', 'adminpassword')
+    dbname = os.getenv('DB_NAME', 'economics_gold')
+    conn_str = f'postgresql://{user}:{password}@{host}:{port}/{dbname}'
     print(f'[*] Testing PostgreSQL connection at {host}...')
     try:
         engine = create_engine(conn_str)

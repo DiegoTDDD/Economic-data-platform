@@ -31,7 +31,6 @@ htmlcov/
 # --- Data artifacts (avoid committing generated datasets) ---
 *.parquet
 *.csv
-!requirements.txt
 
 # --- Logs ---
 *.log
