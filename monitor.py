@@ -1,6 +1,5 @@
 import os
 import subprocess
-import sys
 from sqlalchemy import create_engine
 
 def check_infrastructure():

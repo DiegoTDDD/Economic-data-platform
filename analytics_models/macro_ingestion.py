@@ -15,6 +15,7 @@ def ingest_macro_data():
     engine = create_engine(conn_str)
     
     all_dfs = []
+    errors = []
     start_date_br = "01/01/2015"
     end_date_br = datetime.now().strftime("%d/%m/%Y")
     start_date_iso = "2015-01-01"
@@ -42,8 +43,12 @@ def ingest_macro_data():
                 clean_df = df.dropna(subset=['date', 'value'])[['date', 'indicator_name', 'value']]
                 all_dfs.append(clean_df)
                 print(f"[+] Successfully loaded {len(clean_df)} records for IPCA.")
+        else:
+            print(f"[-] Warning: IPCA API returned status {response.status_code}")
+            errors.append("IPCA")
     except Exception as e:
         print(f"[-] Error fetching IPCA: {e}")
+        errors.append("IPCA")
 
     # 2. Unemployment Rate (%) (Series 24369 - PNAD Contínua, 100% stable monthly BCB SGS series)
     print("[*] Fetching Unemployment Rate from Central Bank of Brazil (BCB SGS Series 24369)...")
@@ -62,8 +67,10 @@ def ingest_macro_data():
                 print(f"[+] Successfully loaded {len(clean_df)} records for Unemployment Rate.")
         else:
             print(f"[-] Warning: Unemployment API returned status {response.status_code}")
+            errors.append("Unemployment Rate")
     except Exception as e:
         print(f"[-] Error fetching Unemployment Rate: {e}")
+        errors.append("Unemployment Rate")
 
     # 3. USD/BRL Exchange Rate via yfinance
     print("[*] Fetching USD/BRL Exchange Rate via yfinance...")
@@ -81,8 +88,12 @@ def ingest_macro_data():
             }).dropna(subset=['date', 'value'])
             all_dfs.append(df_usd)
             print(f"[+] Successfully loaded {len(df_usd)} records for USD/BRL Exchange Rate.")
+        else:
+            print("[-] Warning: yfinance returned no data for USD/BRL Exchange Rate.")
+            errors.append("USD/BRL Exchange Rate")
     except Exception as e:
         print(f"[-] Error fetching USD/BRL via yfinance: {e}")
+        errors.append("USD/BRL Exchange Rate")
 
     if all_dfs:
         final_df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset=['date', 'indicator_name'])
@@ -92,7 +103,10 @@ def ingest_macro_data():
         with engine.begin() as conn:
             conn.execute(text("TRUNCATE TABLE gold_economic_indicators RESTART IDENTITY"))
         final_df.to_sql('gold_economic_indicators', engine, if_exists='append', index=False)
-        print("[+] Macroeconomic multi-indicator ingestion completed successfully with 0 errors.")
+        if errors:
+            print(f"[+] Macroeconomic multi-indicator ingestion completed with {len(errors)} error(s): {', '.join(errors)}.")
+        else:
+            print("[+] Macroeconomic multi-indicator ingestion completed successfully with 0 errors.")
     else:
         raise ValueError("Critical error: No macroeconomic data retrieved from any source.")
 
