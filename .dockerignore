@@ -1,0 +1,28 @@
+# --- Version control ---
+.git/
+.gitignore
+
+# --- Documentation (not needed at runtime) ---
+*.pdf
+manuscript/
+assets/
+README.md
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# --- CI/CD ---
+.github/
+
+# --- Infrastructure files not needed inside the app image ---
+infrastructure/
+Makefile
+
+# --- OS / editor cruft ---
+.DS_Store
+.vscode/
+.idea/
