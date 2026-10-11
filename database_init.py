@@ -5,7 +5,7 @@ def initialize_database():
     host = os.getenv('DB_HOST', 'localhost')
     port = os.getenv('DB_PORT', '5432')
     user = os.getenv('DB_USER', 'admin')
-    password = os.getenv('DB_PASSWORD', 'adminpassword')
+    password = os.environ['DB_PASSWORD']
     dbname = os.getenv('DB_NAME', 'economics_gold')
     conn_str = f'postgresql://{user}:{password}@{host}:{port}/{dbname}'
     engine = create_engine(conn_str)

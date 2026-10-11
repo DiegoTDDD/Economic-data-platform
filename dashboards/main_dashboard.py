@@ -15,7 +15,7 @@ def load_data():
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = os.getenv("DB_PORT", "5432")
     db_user = os.getenv("DB_USER", "admin")
-    db_password = os.getenv("DB_PASSWORD", "adminpassword")
+    db_password = os.environ["DB_PASSWORD"]
     db_name = os.getenv("DB_NAME", "economics_gold")
     engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
 

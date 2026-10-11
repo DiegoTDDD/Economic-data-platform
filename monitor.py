@@ -17,7 +17,7 @@ def check_infrastructure():
     host = os.getenv('DB_HOST', 'localhost')
     port = os.getenv('DB_PORT', '5432')
     user = os.getenv('DB_USER', 'admin')
-    password = os.getenv('DB_PASSWORD', 'adminpassword')
+    password = os.environ['DB_PASSWORD']
     dbname = os.getenv('DB_NAME', 'economics_gold')
     conn_str = f'postgresql://{user}:{password}@{host}:{port}/{dbname}'
     print(f'[*] Testing PostgreSQL connection at {host}...')
