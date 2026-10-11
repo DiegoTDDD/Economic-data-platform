@@ -81,9 +81,10 @@ cd Economic-data-platform
 **2. Start the environment**
 ```bash
 cd infrastructure
+cp .env.example .env      # then open .env and set DB_PASSWORD
 docker compose up -d --build
 ```
-> Runs out of the box with sane defaults — no configuration required. To customize credentials or ports, copy `infrastructure/.env.example` to `infrastructure/.env` and edit the values before starting.
+> The containers will not start without `DB_PASSWORD`: create `infrastructure/.env` from the example and choose your own password first. Ports can also be changed in that file.
 
 **3. Check the containers**
 ```bash
