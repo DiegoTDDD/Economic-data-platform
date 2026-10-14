@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import yfinance as yf
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
 
 def ingest_bitcoin_data():
     print("[*] Downloading historical Bitcoin (BTC-USD) data...")
@@ -38,8 +39,8 @@ def ingest_bitcoin_data():
     db_user = os.getenv("DB_USER", "admin")
     db_password = os.environ["DB_PASSWORD"]
     db_name = os.getenv("DB_NAME", "economics_gold")
-    conn_str = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-    engine = create_engine(conn_str)
+    # URL.create escapes special characters in the password (@ : / # % ...)
+    engine = create_engine(URL.create("postgresql+psycopg2", username=db_user, password=db_password, host=db_host, port=int(db_port), database=db_name))
 
     print(f"[*] Inserting {len(df_clean)} records into the gold_bitcoin_metrics table...")
     # Clear existing rows while preserving the schema defined in database_init.py

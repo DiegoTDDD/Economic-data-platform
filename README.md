@@ -86,6 +86,8 @@ docker compose up -d --build
 ```
 > The containers will not start without `DB_PASSWORD`: create `infrastructure/.env` from the example and choose your own password first. Ports can also be changed in that file.
 
+> **Ran this stack before?** The database volume keeps the password it was first created with, so the containers fail with `password authentication failed`. Reset it once with `docker compose down -v` and start again (the pipeline reloads the data).
+
 **3. Check the containers**
 ```bash
 docker compose ps

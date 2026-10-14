@@ -4,7 +4,7 @@ services:
     container_name: economics_postgres_gold
     environment:
       POSTGRES_USER: ${DB_USER:-admin}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no arquivo infrastructure/.env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in infrastructure/.env}
       POSTGRES_DB: ${DB_NAME:-economics_gold}
     ports:
       - "127.0.0.1:${DB_PORT:-5432}:5432"
@@ -28,7 +28,7 @@ services:
     environment:
       DB_HOST: ${DB_HOST:-postgres}
       DB_USER: ${DB_USER:-admin}
-      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no arquivo infrastructure/.env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in infrastructure/.env}
       DB_NAME: ${DB_NAME:-economics_gold}
     command: sh -c "python orchestrator.py"
 
@@ -45,7 +45,7 @@ services:
     environment:
       DB_HOST: ${DB_HOST:-postgres}
       DB_USER: ${DB_USER:-admin}
-      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no arquivo infrastructure/.env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in infrastructure/.env}
       DB_NAME: ${DB_NAME:-economics_gold}
     ports:
       - "127.0.0.1:${STREAMLIT_PORT:-8501}:8501"

@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 
 # Page configuration
 st.set_page_config(page_title="Economic Intelligence", layout="wide")
@@ -17,7 +18,8 @@ def load_data():
     db_user = os.getenv("DB_USER", "admin")
     db_password = os.environ["DB_PASSWORD"]
     db_name = os.getenv("DB_NAME", "economics_gold")
-    engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+    # URL.create escapes special characters in the password (@ : / # % ...)
+    engine = create_engine(URL.create("postgresql+psycopg2", username=db_user, password=db_password, host=db_host, port=int(db_port), database=db_name))
 
     df_btc = pd.read_sql("SELECT * FROM gold_bitcoin_metrics ORDER BY date", engine)
     df_macro = pd.read_sql("SELECT * FROM gold_economic_indicators ORDER BY date", engine)

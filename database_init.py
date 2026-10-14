@@ -1,5 +1,6 @@
 import os
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
 
 def initialize_database():
     host = os.getenv('DB_HOST', 'localhost')
@@ -7,8 +8,8 @@ def initialize_database():
     user = os.getenv('DB_USER', 'admin')
     password = os.environ['DB_PASSWORD']
     dbname = os.getenv('DB_NAME', 'economics_gold')
-    conn_str = f'postgresql://{user}:{password}@{host}:{port}/{dbname}'
-    engine = create_engine(conn_str)
+    # URL.create escapes special characters in the password (@ : / # % ...)
+    engine = create_engine(URL.create('postgresql+psycopg2', username=user, password=password, host=host, port=int(port), database=dbname))
     
     print('[*] Initializing Gold layer schema and analytical tables...')
     with engine.begin() as conn:
