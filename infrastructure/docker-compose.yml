@@ -11,10 +11,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-economics_gold}"]
+      # -h 127.0.0.1 forces a TCP check: on the first start Postgres runs a temporary server that
+      # only listens on a local socket, and a socket check would report "ready" too early.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${DB_USER:-admin} -d ${DB_NAME:-economics_gold}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 12
     restart: always
 
   pipeline:
