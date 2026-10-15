@@ -61,7 +61,7 @@ Automated build-and-test pipeline validating code quality on every push.
 |---|---|---|
 | Ingestion | Python (requests, pandas) | API data extraction, JSON parsing, and type enforcement. |
 | Storage | PostgreSQL | ACID-compliant relational storage for clean time-series metrics. |
-| Orchestration | Python (orchestrator.py) | Execution sequencing and fail-fast error handling. |
+| Orchestration | Python (orchestrator.py) | Execution sequencing, automatic retries for transient failures, and fail-fast on persistent errors. |
 | Infrastructure | Docker & Docker Compose | Network isolation, health-check-based startup ordering, and environment-agnostic reproducibility. |
 | CI/CD | GitHub Actions | Automated build and test pipeline on every repository push. |
 | Presentation | Streamlit & Plotly | Interactive operations console and real-time visualization. |
@@ -92,6 +92,7 @@ docker compose up -d --build
 ```bash
 docker compose ps
 ```
+> The first start takes a few minutes: the dashboard only starts after the `pipeline` container finishes loading the data. That container shows as `Exited (0)` when it is done, which is expected.
 
 **4. Open the dashboard**
 Open your browser and navigate to `http://localhost:8501`.
