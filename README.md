@@ -102,6 +102,10 @@ Open your browser and navigate to `http://localhost:8501`.
 docker compose down
 ```
 
+## 🔒 Automated Security Audit
+
+A second workflow, `security-audit.yml`, audits `requirements.txt` with `pip-audit` whenever dependencies change and every Monday. It fails only when a vulnerable package has a fixed version available, so the status badge in the Actions tab is a live check of the dependency set.
+
 ## 📊 Data Sources
 
 * **Banco Central do Brasil (BCB SGS):** IPCA inflation index (Series 433) and Unemployment Rate (Series 24369).
