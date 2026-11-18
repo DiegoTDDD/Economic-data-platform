@@ -18,7 +18,7 @@
 | One source down does not erase its history | Per-indicator replace: a missing indicator keeps its previous rows |
 | Duplicates are impossible | Unique indexes on `(date, indicator)` and `(date)` |
 
-**Design decisions:** [`docs/adr/`](docs/adr/README.md)
+**🔗 Live dashboard:** [diegotddd-economic-data-platform.streamlit.app](https://diegotddd-economic-data-platform.streamlit.app) (reads the Gold snapshot that CI refreshes monthly from the live sources) · **Design decisions:** [`docs/adr/`](docs/adr/README.md)
 
 📄 **[Read the Full Engineering Case Study (PDF)](./manuscript/Economic_Platform_Case_Study.pdf)**
 
@@ -130,6 +130,7 @@ pytest          # PostgreSQL tests run when DB_PASSWORD (and DB_HOST/DB_PORT) po
 
 - **CI** (`ci_pipeline.yml`) runs on every push and pull request: `ruff` (type hints required, no `print` in pipeline code), all 23 tests against a PostgreSQL service, a render of the dashboard from the snapshot, and a Docker build.
 - **Refresh snapshot** (`refresh-snapshot.yml`) runs the real pipeline against the live sources every month on a fresh database, exports the Gold tables to `data/gold_snapshot/` for the public dashboard, and commits them only if every step and check passed.
+- **App health** (`app-health.yml`) opens the [live app](https://diegotddd-economic-data-platform.streamlit.app) in a real browser after each push and once a day (waking it if it was asleep) and fails if the app shows an error.
 - **Security audit** (`security-audit.yml`) audits `requirements.txt` with `pip-audit` whenever dependencies change and every Monday. It fails only when a vulnerable package has a fixed version available.
 
 ## ⚠️ Limitations
