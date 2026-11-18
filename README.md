@@ -1,12 +1,24 @@
 # Economic Intelligence & Financial Markets Platform
 
 ![CI/CD Pipeline Status](https://github.com/DiegoTDDD/Economic-data-platform/actions/workflows/ci_pipeline.yml/badge.svg)
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Gold_Layer-336791?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)
 
-An end-to-end ELT (Extract, Load, Transform) data platform that ingests macroeconomic indicators and cryptocurrency market data, structures it into a strict PostgreSQL "Gold" layer, and serves it through interactive operational dashboards.
+**Problem.** Public economic data sources fail in ordinary ways: rate limits, timeouts, empty answers, a format change. A dashboard fed straight from them goes blank or, worse, shows wrong numbers without anyone noticing.
+
+**Solution.** An ELT platform that pulls Brazilian macro indicators (Banco Central do Brasil) and market data (Yahoo Finance) with retries, checks every batch before it may replace the PostgreSQL Gold layer, writes it atomically, and serves it on a Streamlit dashboard.
+
+| Reliability property | How it is guaranteed |
+|---|---|
+| Gold is never empty or half-written | Delete and insert in one transaction; a test proves a failed insert rolls back the delete on a real PostgreSQL |
+| Bad data never reaches the dashboard | Range, null, duplicate, future-date and row-count checks on every batch; a failing batch is rejected and Gold keeps its previous data |
+| Brief outages recover by themselves | Exponential backoff per HTTP call (2/4/8 s, only 429/5xx/timeouts) and 3 attempts per pipeline step |
+| One source down does not erase its history | Per-indicator replace: a missing indicator keeps its previous rows |
+| Duplicates are impossible | Unique indexes on `(date, indicator)` and `(date)` |
+
+**Design decisions:** [`docs/adr/`](docs/adr/README.md)
 
 📄 **[Read the Full Engineering Case Study (PDF)](./manuscript/Economic_Platform_Case_Study.pdf)**
 
@@ -18,9 +30,12 @@ The platform is built as a modular, containerized ELT pipeline. It separates ext
 
 ```mermaid
 flowchart LR
-    A[Disparate APIs] -->|Modular Scripts| B[Python Ingestion]
-    B --> C[(PostgreSQL Gold Layer)]
+    A[BCB SGS + Yahoo Finance] -->|retries + backoff| B[Python ingestion]
+    B --> Q{Quality checks}
+    Q -->|pass: atomic replace| C[(PostgreSQL Gold Layer)]
+    Q -->|fail: Gold unchanged| X[QualityError]
     C -->|Strict Relational Schema| D[Streamlit Dashboards]
+    C -->|monthly CI export| S[Gold snapshot] --> D
 
     style A fill:#1f2937,stroke:#38bdf8,stroke-width:1px,color:#f8fafc
     style B fill:#1f2937,stroke:#38bdf8,stroke-width:1px,color:#f8fafc
@@ -102,9 +117,26 @@ Open your browser and navigate to `http://localhost:8501`.
 docker compose down
 ```
 
-## 🔒 Automated Security Audit
+## 🧪 Tests
 
-A second workflow, `security-audit.yml`, audits `requirements.txt` with `pip-audit` whenever dependencies change and every Monday. It fails only when a vulnerable package has a fixed version available, so the status badge in the Actions tab is a live check of the dependency set.
+```bash
+pip install -r requirements-test.txt
+pytest          # PostgreSQL tests run when DB_PASSWORD (and DB_HOST/DB_PORT) point at a database
+```
+
+23 tests: parsing recorded BCB and Yahoo payloads (including the MultiIndex columns of newer yfinance), the retry rules and their exact waits, every quality check, the orchestrator's step retries, and four tests against a real PostgreSQL (replace, rejected batch, rolled-back insert, missing source keeps its history).
+
+## 🔒 Automated Checks
+
+- **CI** (`ci_pipeline.yml`) runs on every push and pull request: `ruff` (type hints required, no `print` in pipeline code), all 23 tests against a PostgreSQL service, a render of the dashboard from the snapshot, and a Docker build.
+- **Refresh snapshot** (`refresh-snapshot.yml`) runs the real pipeline against the live sources every month on a fresh database, exports the Gold tables to `data/gold_snapshot/` for the public dashboard, and commits them only if every step and check passed.
+- **Security audit** (`security-audit.yml`) audits `requirements.txt` with `pip-audit` whenever dependencies change and every Monday. It fails only when a vulnerable package has a fixed version available.
+
+## ⚠️ Limitations
+
+- **Full refresh each run.** Each run reloads the whole history: fine for a few thousand rows, but large series would need incremental loads.
+- **Time-based scheduling only.** Runs come from Docker Compose or the monthly workflow, with no event triggers or backfills (Airflow or Dagster would add those).
+- **Yahoo Finance is an unofficial API.** It is the most likely source to break, which is why it has retries and why a failure there does not erase history.
 
 ## 📊 Data Sources
 

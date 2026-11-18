@@ -1,115 +1,75 @@
-import os
+"""Ingest Brazilian macro indicators into gold_economic_indicators.
+
+  - IPCA, monthly %           BCB SGS series 433
+  - Unemployment rate, %      BCB SGS series 24369 (PNAD Continua)
+  - USD/BRL exchange rate     yfinance USDBRL=X
+
+One failing source does not block the others: the sources that answered are
+replaced, the one that failed keeps its previous rows in Gold, and a warning
+names it. Nothing is written if no source answered or the batch fails its
+quality checks.
+"""
+
+from __future__ import annotations
+
+import logging
+import sys
+from datetime import date
+from pathlib import Path
+
 import pandas as pd
 import requests
-import yfinance as yf
-from datetime import datetime
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import URL
 
-def ingest_macro_data():
-    db_host = os.getenv("DB_HOST", "localhost")
-    db_port = os.getenv("DB_PORT", "5432")
-    db_user = os.getenv("DB_USER", "admin")
-    db_password = os.environ["DB_PASSWORD"]
-    db_name = os.getenv("DB_NAME", "economics_gold")
-    # URL.create escapes special characters in the password (@ : / # % ...)
-    engine = create_engine(URL.create("postgresql+psycopg2", username=db_user, password=db_password, host=db_host, port=int(db_port), database=db_name))
-    
-    all_dfs = []
-    errors = []
-    start_date_br = "01/01/2015"
-    end_date_br = datetime.now().strftime("%d/%m/%Y")
-    start_date_iso = "2015-01-01"
-    
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*"
-    }
-    
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from analytics_models.gold import engine_from_env, replace_table  # noqa: E402
+from analytics_models.quality import check_indicators  # noqa: E402
+from analytics_models.sources import (  # noqa: E402
+    SourceError,
+    download_yfinance,
+    fetch_bcb,
+    parse_yfinance_series,
+)
+
+log = logging.getLogger(__name__)
+START = date(2015, 1, 1)
+BCB_SERIES = {433: "IPCA - Monthly (%)", 24369: "Unemployment Rate (%)"}
+USD_BRL = "USD/BRL Exchange Rate (Purchase)"
+
+
+def collect(session: requests.Session, end: date) -> tuple[pd.DataFrame, list[str]]:
+    """Every source that answers, stacked; plus the names of those that failed."""
+    frames, failed = [], []
+    for code, name in BCB_SERIES.items():
+        try:
+            frames.append(fetch_bcb(session, code, name, START, end))
+            log.info("%s: %d rows", name, len(frames[-1]))
+        except SourceError as exc:
+            log.error("%s", exc)
+            failed.append(name)
+    try:
+        frames.append(parse_yfinance_series(download_yfinance("USDBRL=X", f"{START:%Y-%m-%d}"),
+                                            USD_BRL))
+        log.info("%s: %d rows", USD_BRL, len(frames[-1]))
+    except SourceError as exc:
+        log.error("%s", exc)
+        failed.append(USD_BRL)
+    if not frames:
+        raise SourceError("no macroeconomic source answered")
+    batch = pd.concat(frames, ignore_index=True).drop_duplicates(subset=["date", "indicator_name"])
+    return batch, failed
+
+
+def ingest_macro_data() -> int:
     session = requests.Session()
-    session.headers.update(headers)
-    
-    # 1. IPCA - Monthly (%) (Series 433)
-    print("[*] Fetching IPCA from Central Bank of Brazil (BCB SGS Series 433)...")
-    try:
-        url_ipca = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados?formato=json&dataInicial={start_date_br}&dataFinal={end_date_br}"
-        response = session.get(url_ipca, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            if data:
-                df = pd.DataFrame(data)
-                df['date'] = pd.to_datetime(df['data'], format='%d/%m/%Y', errors='coerce').dt.date
-                df['value'] = pd.to_numeric(df['valor'], errors='coerce')
-                df['indicator_name'] = "IPCA - Monthly (%)"
-                clean_df = df.dropna(subset=['date', 'value'])[['date', 'indicator_name', 'value']]
-                all_dfs.append(clean_df)
-                print(f"[+] Successfully loaded {len(clean_df)} records for IPCA.")
-        else:
-            print(f"[-] Warning: IPCA API returned status {response.status_code}")
-            errors.append("IPCA")
-    except Exception as e:
-        print(f"[-] Error fetching IPCA: {e}")
-        errors.append("IPCA")
+    session.headers.update({"Accept": "application/json", "User-Agent": "economic-data-platform"})
+    batch, failed = collect(session, date.today())
+    if failed:
+        log.warning("loaded without: %s", ", ".join(failed))
+    # Only the indicators in this batch are replaced; a source that failed keeps its history.
+    return replace_table(engine_from_env(), "gold_economic_indicators", batch,
+                         check_indicators(batch), partition_by="indicator_name")
 
-    # 2. Unemployment Rate (%) (Series 24369 - PNAD Contínua, 100% stable monthly BCB SGS series)
-    print("[*] Fetching Unemployment Rate from Central Bank of Brazil (BCB SGS Series 24369)...")
-    try:
-        url_unemployment = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.24369/dados?formato=json&dataInicial={start_date_br}&dataFinal={end_date_br}"
-        response = session.get(url_unemployment, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            if data:
-                df = pd.DataFrame(data)
-                df['date'] = pd.to_datetime(df['data'], format='%d/%m/%Y', errors='coerce').dt.date
-                df['value'] = pd.to_numeric(df['valor'], errors='coerce')
-                df['indicator_name'] = "Unemployment Rate (%)"
-                clean_df = df.dropna(subset=['date', 'value'])[['date', 'indicator_name', 'value']]
-                all_dfs.append(clean_df)
-                print(f"[+] Successfully loaded {len(clean_df)} records for Unemployment Rate.")
-        else:
-            print(f"[-] Warning: Unemployment API returned status {response.status_code}")
-            errors.append("Unemployment Rate")
-    except Exception as e:
-        print(f"[-] Error fetching Unemployment Rate: {e}")
-        errors.append("Unemployment Rate")
-
-    # 3. USD/BRL Exchange Rate via yfinance
-    print("[*] Fetching USD/BRL Exchange Rate via yfinance...")
-    try:
-        usd_brl = yf.download("USDBRL=X", start=start_date_iso, progress=False)
-        if not usd_brl.empty:
-            usd_brl = usd_brl.reset_index()
-            if isinstance(usd_brl.columns, pd.MultiIndex): 
-                usd_brl.columns = [col[0] if col[0] != '' else col[1] for col in usd_brl.columns]
-            close_col = 'Close' if 'Close' in usd_brl.columns else usd_brl.columns[1]
-            df_usd = pd.DataFrame({
-                'date': pd.to_datetime(usd_brl['Date'], errors='coerce').dt.date,
-                'indicator_name': 'USD/BRL Exchange Rate (Purchase)',
-                'value': pd.to_numeric(usd_brl[close_col], errors='coerce')
-            }).dropna(subset=['date', 'value'])
-            all_dfs.append(df_usd)
-            print(f"[+] Successfully loaded {len(df_usd)} records for USD/BRL Exchange Rate.")
-        else:
-            print("[-] Warning: yfinance returned no data for USD/BRL Exchange Rate.")
-            errors.append("USD/BRL Exchange Rate")
-    except Exception as e:
-        print(f"[-] Error fetching USD/BRL via yfinance: {e}")
-        errors.append("USD/BRL Exchange Rate")
-
-    if all_dfs:
-        final_df = pd.concat(all_dfs, ignore_index=True).drop_duplicates(subset=['date', 'indicator_name'])
-        print(f"[*] Inserting total of {len(final_df)} macroeconomic records into gold_economic_indicators...")
-        # Clear existing rows while preserving the schema defined in database_init.py
-        # (id, created_at) — refreshing the data without dropping/recreating the table.
-        with engine.begin() as conn:
-            conn.execute(text("TRUNCATE TABLE gold_economic_indicators RESTART IDENTITY"))
-        final_df.to_sql('gold_economic_indicators', engine, if_exists='append', index=False)
-        if errors:
-            print(f"[+] Macroeconomic multi-indicator ingestion completed with {len(errors)} error(s): {', '.join(errors)}.")
-        else:
-            print("[+] Macroeconomic multi-indicator ingestion completed successfully with 0 errors.")
-    else:
-        raise ValueError("Critical error: No macroeconomic data retrieved from any source.")
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     ingest_macro_data()

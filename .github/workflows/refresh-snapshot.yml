@@ -1,0 +1,82 @@
+name: Refresh Gold snapshot
+
+# Runs the real pipeline (BCB and Yahoo Finance -> quality checks -> PostgreSQL Gold) on a
+# fresh database, exports the Gold tables to data/gold_snapshot/ and commits them if they
+# changed. The public dashboard reads that snapshot. Monthly and on demand. A source that
+# is down fails the run (Bitcoin) or is skipped with a warning (one macro indicator);
+# nothing is committed unless the whole pipeline and its checks pass.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 9 4 * *"
+
+permissions:
+  contents: write   # to commit the refreshed snapshot
+  actions: write    # only used to keep the monthly schedule enabled (see last step)
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_PASSWORD: snapshot-${{ github.run_id }}
+      DB_HOST: localhost
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: snapshot-${{ github.run_id }}
+          POSTGRES_DB: economics_gold
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Run the pipeline against the live sources
+        run: python orchestrator.py
+
+      - name: Health check
+        run: python monitor.py
+
+      - name: Export the snapshot
+        run: python export_snapshot.py
+
+      - name: The dashboard renders from it
+        run: |
+          env -u DB_PASSWORD python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          at = AppTest.from_file("dashboards/main_dashboard.py", default_timeout=120).run()
+          assert not at.exception, [e.value for e in at.exception]
+          print([c.value for c in at.caption])
+          PY
+
+      - name: Commit the snapshot if it changed
+        run: |
+          git add data/gold_snapshot
+          if git diff --cached --quiet; then echo "snapshot unchanged"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git commit -m "data: refresh the Gold snapshot"
+          git push
+
+      - name: Keep the monthly schedule enabled
+        if: ${{ always() && github.event_name == 'schedule' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/refresh-snapshot.yml/enable"

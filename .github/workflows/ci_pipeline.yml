@@ -1,23 +1,33 @@
 name: Data Platform CI/CD Pipeline
 
+# Lint and tests on every push and pull request. The tests cover source parsing and
+# retries (no network), the quality checks, the orchestrator's retries, and the Gold
+# refresh against the real PostgreSQL service below (atomic replace, rejected batches,
+# a failed source keeping its history).
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       DB_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
-    
+      DB_HOST: localhost
+
     services:
       postgres:
         image: postgres:15-alpine
         env:
           POSTGRES_USER: admin
-          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          POSTGRES_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
           POSTGRES_DB: economics_gold
         ports:
           - 5432:5432
@@ -34,15 +44,34 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: requirements*.txt
 
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements-test.txt ruff
+        pip check
 
-    - name: Run Unit Tests
-      env:
-        DB_HOST: localhost
+    - name: Lint
+      run: ruff check .
+
+    - name: Run the tests (including PostgreSQL)
+      run: pytest -v
+
+    - name: The dashboard renders from the committed snapshot
       run: |
-        python -m unittest discover -s tests
+        env -u DB_PASSWORD python - <<'PY'
+        from pathlib import Path
+        from streamlit.testing.v1 import AppTest
+        if not Path("data/gold_snapshot/gold_bitcoin_metrics.parquet").exists():
+            print("no snapshot yet (the refresh-snapshot workflow creates it)")
+        else:
+            at = AppTest.from_file("dashboards/main_dashboard.py", default_timeout=120).run()
+            assert not at.exception, [e.value for e in at.exception]
+            print("dashboard ok:", [c.value for c in at.caption])
+        PY
+
+    - name: Docker image builds
+      run: docker build -t economic-data-platform .

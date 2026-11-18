@@ -1,32 +1,39 @@
-import os
+"""Quick health check: running containers and a connection to the Gold database."""
+
+import logging
 import subprocess
-from sqlalchemy import create_engine
-from sqlalchemy.engine import URL
+import sys
+from pathlib import Path
 
-def check_infrastructure():
-    print('=== PLATFORM HEALTH MONITOR ===')
+from sqlalchemy import text
 
-    # 1. Check active Docker container status
-    print('[*] Checking active Docker containers...')
-    result = subprocess.run(['docker', 'ps', '--format', '{{.Names}} - {{.Status}}'], capture_output=True, text=True)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from analytics_models.gold import engine_from_env  # noqa: E402
+
+log = logging.getLogger(__name__)
+
+
+def check_infrastructure() -> bool:
+    log.info("=== PLATFORM HEALTH MONITOR ===")
+    result = subprocess.run(["docker", "ps", "--format", "{{.Names}} - {{.Status}}"],
+                            capture_output=True, text=True)
     if result.returncode == 0:
-        print(result.stdout if result.stdout else 'No active containers found.')
+        log.info("Containers:\n%s", result.stdout or "none running")
     else:
-        print('[!] Error querying Docker.')
-
-    # 2. Test connectivity with the PostgreSQL Gold layer
-    host = os.getenv('DB_HOST', 'localhost')
-    port = os.getenv('DB_PORT', '5432')
-    user = os.getenv('DB_USER', 'admin')
-    password = os.environ['DB_PASSWORD']
-    dbname = os.getenv('DB_NAME', 'economics_gold')
-    print(f'[*] Testing PostgreSQL connection at {host}...')
+        log.error("Could not query Docker: %s", result.stderr.strip())
     try:
-        engine = create_engine(URL.create('postgresql+psycopg2', username=user, password=password, host=host, port=int(port), database=dbname))
-        with engine.connect() as conn:
-            print('[+] PostgreSQL Gold database RESPONDING successfully.')
-    except Exception as e:
-        print(f'[-] Database connection failed: {e}')
+        with engine_from_env().connect() as conn:
+            rows = conn.execute(text(
+                "SELECT (SELECT COUNT(*) FROM gold_economic_indicators), "
+                "(SELECT COUNT(*) FROM gold_bitcoin_metrics)"
+            )).one()
+        log.info("PostgreSQL Gold layer responding: %s indicator rows, %s bitcoin rows", *rows)
+        return True
+    except Exception as exc:  # noqa: BLE001 - report any connection problem
+        log.error("Database check failed: %s", exc)
+        return False
 
-if __name__ == '__main__':
-    check_infrastructure()
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    sys.exit(0 if check_infrastructure() else 1)

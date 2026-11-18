@@ -30,6 +30,8 @@ htmlcov/
 
 # --- Data artifacts (avoid committing generated datasets) ---
 *.parquet
+# ...except the Gold snapshot the public dashboard reads (refreshed by CI)
+!data/gold_snapshot/*.parquet
 *.csv
 
 # --- Logs ---

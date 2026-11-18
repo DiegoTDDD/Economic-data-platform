@@ -14,4 +14,4 @@ pipeline-run:
 	cd infrastructure && docker compose start pipeline
 
 test:
-	python -m unittest discover -s tests
+	pytest

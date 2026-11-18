@@ -1,54 +1,26 @@
-import os
-import pandas as pd
-import yfinance as yf
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import URL
+"""Ingest daily BTC-USD prices (yfinance) into gold_bitcoin_metrics."""
 
-def ingest_bitcoin_data():
-    print("[*] Downloading historical Bitcoin (BTC-USD) data...")
+from __future__ import annotations
 
-    # Download Bitcoin data
-    btc = yf.download("BTC-USD", start="2020-01-01", progress=False)
+import logging
+import sys
+from pathlib import Path
 
-    if btc.empty:
-        raise ValueError("No data returned by yfinance for BTC-USD.")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from analytics_models.gold import engine_from_env, replace_table  # noqa: E402
+from analytics_models.quality import check_bitcoin  # noqa: E402
+from analytics_models.sources import download_yfinance, parse_bitcoin  # noqa: E402
 
-    # Reset the index to turn 'Date' into a regular column
-    btc = btc.reset_index()
+log = logging.getLogger(__name__)
+START = "2020-01-01"
 
-    # Handle MultiIndex columns in case yfinance returns tuples
-    if isinstance(btc.columns, pd.MultiIndex):
-        btc.columns = [col[0] if col[0] != '' else col[1] for col in btc.columns]
 
-    # Rename and select only the essential columns
-    # Depending on the version, the column may come as 'Close' or 'Adj Close'
-    close_col = 'Close' if 'Close' in btc.columns else btc.columns[1]
+def ingest_bitcoin_data() -> int:
+    log.info("Downloading BTC-USD daily history since %s ...", START)
+    df = parse_bitcoin(download_yfinance("BTC-USD", start=START))
+    return replace_table(engine_from_env(), "gold_bitcoin_metrics", df, check_bitcoin(df))
 
-    df_clean = pd.DataFrame({
-        'date': pd.to_datetime(btc['Date']).dt.date,
-        'close_price': btc[close_col],
-        'volume': btc['Volume'] if 'Volume' in btc.columns else 0
-    })
-
-    # Drop null values
-    df_clean = df_clean.dropna(subset=['close_price'])
-
-    # Set up connection to the Gold database on Docker
-    db_host = os.getenv("DB_HOST", "localhost")
-    db_port = os.getenv("DB_PORT", "5432")
-    db_user = os.getenv("DB_USER", "admin")
-    db_password = os.environ["DB_PASSWORD"]
-    db_name = os.getenv("DB_NAME", "economics_gold")
-    # URL.create escapes special characters in the password (@ : / # % ...)
-    engine = create_engine(URL.create("postgresql+psycopg2", username=db_user, password=db_password, host=db_host, port=int(db_port), database=db_name))
-
-    print(f"[*] Inserting {len(df_clean)} records into the gold_bitcoin_metrics table...")
-    # Clear existing rows while preserving the schema defined in database_init.py
-    # (id, created_at) — refreshing the data without dropping/recreating the table.
-    with engine.begin() as conn:
-        conn.execute(text("TRUNCATE TABLE gold_bitcoin_metrics RESTART IDENTITY"))
-    df_clean.to_sql('gold_bitcoin_metrics', engine, if_exists='append', index=False)
-    print("[+] Bitcoin ingestion completed successfully.")
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     ingest_bitcoin_data()

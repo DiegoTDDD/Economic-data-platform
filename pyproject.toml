@@ -1,0 +1,26 @@
+[project]
+name = "economic-data-platform"
+version = "1.1.0"
+description = "ELT platform: BCB and Yahoo Finance -> quality checks -> PostgreSQL Gold -> Streamlit"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Diego Alves" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".github"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ANN", "T20"]
+ignore = ["E402", "ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "T20"]
+"dashboards/**" = ["ANN", "T20", "E501"]

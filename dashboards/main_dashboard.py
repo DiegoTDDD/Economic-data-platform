@@ -1,36 +1,45 @@
 import os
+from pathlib import Path
+
 import pandas as pd
-import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
 from plotly.subplots import make_subplots
-from sqlalchemy import create_engine
-from sqlalchemy.engine import URL
 
 # Page configuration
 st.set_page_config(page_title="Economic Intelligence", layout="wide")
 
-# Database connection (cached for performance)
+# Committed export of the Gold tables (export_snapshot.py), used when no database is configured,
+# as on Streamlit Community Cloud.
+SNAPSHOT_DIR = Path(__file__).resolve().parents[1] / "data" / "gold_snapshot"
+
+
 @st.cache_data
 def load_data():
-    db_host = os.getenv("DB_HOST", "localhost")
-    db_port = os.getenv("DB_PORT", "5432")
-    db_user = os.getenv("DB_USER", "admin")
-    db_password = os.environ["DB_PASSWORD"]
-    db_name = os.getenv("DB_NAME", "economics_gold")
-    # URL.create escapes special characters in the password (@ : / # % ...)
-    engine = create_engine(URL.create("postgresql+psycopg2", username=db_user, password=db_password, host=db_host, port=int(db_port), database=db_name))
+    """Gold tables from PostgreSQL when DB_PASSWORD is set, else the committed snapshot."""
+    if os.getenv("DB_PASSWORD"):
+        import sys
 
-    df_btc = pd.read_sql("SELECT * FROM gold_bitcoin_metrics ORDER BY date", engine)
-    df_macro = pd.read_sql("SELECT * FROM gold_economic_indicators ORDER BY date", engine)
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from analytics_models.gold import engine_from_env
 
-    return df_btc, df_macro
+        engine = engine_from_env()
+        df_btc = pd.read_sql("SELECT * FROM gold_bitcoin_metrics ORDER BY date", engine)
+        df_macro = pd.read_sql("SELECT * FROM gold_economic_indicators ORDER BY date", engine)
+        return df_btc, df_macro, "live PostgreSQL Gold layer"
+    df_btc = pd.read_parquet(SNAPSHOT_DIR / "gold_bitcoin_metrics.parquet")
+    df_macro = pd.read_parquet(SNAPSHOT_DIR / "gold_economic_indicators.parquet")
+    return df_btc, df_macro, "snapshot of the Gold layer"
 
-df_btc, df_macro = load_data()
+
+df_btc, df_macro, data_source = load_data()
 
 # Header
 st.title("📊 Economic Intelligence & Financial Markets Platform")
 st.markdown("Production-grade analytical dashboard powered by PostgreSQL, Python, and Streamlit.")
+latest = max(pd.to_datetime(df_btc["date"]).max(), pd.to_datetime(df_macro["date"]).max())
+st.caption(f"Data: {data_source}, latest observation {latest:%Y-%m-%d}.")
 
 # Sidebar menu (Filters)
 st.sidebar.header("Filter Options")
@@ -45,10 +54,10 @@ with tab1:
     st.subheader("Bitcoin Historical Close Price & Volume")
 
     fig_btc_price = px.line(df_btc, x='date', y='close_price', title="BTC-USD Daily Close Price")
-    st.plotly_chart(fig_btc_price, use_container_width=True)
+    st.plotly_chart(fig_btc_price, width="stretch")
 
     fig_btc_vol = px.area(df_btc, x='date', y='volume', title="BTC-USD Trading Volume")
-    st.plotly_chart(fig_btc_vol, use_container_width=True)
+    st.plotly_chart(fig_btc_vol, width="stretch")
 
 # Tab 2: Macroeconomics (updated with independent subplots)
 with tab2:
@@ -91,4 +100,4 @@ with tab2:
             margin=dict(t=50, b=40, l=40, r=40)
         )
 
-        st.plotly_chart(fig_macro, use_container_width=True)
+        st.plotly_chart(fig_macro, width="stretch")
